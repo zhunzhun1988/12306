@@ -2,7 +2,6 @@ package verifycode
 
 import (
 	"12306/opencv"
-	"fmt"
 )
 
 type DebugVerify struct {
@@ -32,50 +31,64 @@ func checkIndexToPos(image string, i, j int) (x, y int) {
 }
 
 func (dv *DebugVerify) GetAnswer(imagepath string) VerifyPosList {
-
-	//_, currentfile, _, _ := runtime.Caller(0)
-	//filename := path.Join(path.Dir(currentfile), imagepath)
-
 	image := opencv.LoadImage(imagepath)
 	if image == nil {
 		panic("LoadImage test.jpg fail  ")
 	}
+	imageSave := opencv.LoadImage(imagepath)
 	defer image.Release()
+	defer imageSave.Release()
 
 	mat := image.GetMat()
-	for i := 0; i < mat.Rows(); i++ {
-		for j := 0; j < mat.Cols(); j++ {
-			s := mat.Get2D(i, j)
-			fmt.Sprintf("%d ", s.Val()[0])
-		}
-	}
+	savemat := imageSave.GetMat()
 
-	win := opencv.NewWindow("Go-OpenCV")
+	selected := make(map[int]bool)
+	selectOk := false
+	win := opencv.NewWindow("12306 Verify Code")
 	defer win.Destroy()
 
+	okStartW, okStartH, okEndW, okEndH := GetOKRange(mat.Cols(), mat.Rows())
 	win.SetMouseCallback(func(event, x, y, flags int) {
-		//fmt.Printf("event = %d, x = %d, y = %d, flags = %d\n",
-		//	event, x, y, flags,
-		//)
-	})
-	win.CreateTrackbar("Thresh", 1, 100, func(pos int) {
-		fmt.Printf("pos = %d\n", pos)
-	})
+		if event == 1 {
+			if x >= okStartW && x <= okEndW && y >= okStartH && y <= okEndH {
+				selectOk = true
+			}
+			r, c := GetIndexByPos(mat.Cols(), mat.Rows(), x, y)
+			if r <= 0 || c <= 0 {
+				return
+			}
+			sw, sh, ew, eh := GetImageRange(mat.Cols(), mat.Rows(), r, c)
+			chosed := selected[r*10+c]
+			for i := sw + (ew-sw)/2 - 10; i < sw+(ew-sw)/2+10; i++ {
+				for j := sh + (eh-sh)/2 - 10; j < sh+(eh-sh)/2+10; j++ {
+					if chosed == false {
+						mat.Set2D(j, i, opencv.NewScalar(255, 0, 0, 0))
+					} else {
+						s := savemat.Get2D(j, i)
+						mat.Set2D(j, i, opencv.NewScalar(s.Val()[0], s.Val()[1], s.Val()[2], 0))
+					}
+				}
 
+			}
+			selected[r*10+c] = !chosed
+			win.ShowImage(image)
+		}
+	})
+	win.AddText(image, "OK", mat.Cols()-30, 20)
 	win.ShowImage(image)
-
-	opencv.WaitKey(0)
-
-	n := 0
+	for {
+		opencv.WaitKey(100)
+		if selectOk == true {
+			break
+		}
+	}
 	var poss VerifyPosList
-	fmt.Printf("num:")
-	fmt.Scanf("%d", &n)
-	poss = make(VerifyPosList, n)
-	for i := 0; i < n; i++ {
-		var x, y int
-		fmt.Printf("[%d pos]:", i)
-		fmt.Scanf("%d %d", &x, &y)
+	poss = make(VerifyPosList, len(selected))
+	i := 0
+	for s := range selected {
+		x, y := s/10, s%10
 		poss[i].X, poss[i].Y = checkIndexToPos(imagepath, x, y)
+		i++
 	}
 	return poss
 }

@@ -137,6 +137,18 @@ func (win *Window) ShowImage(image *IplImage) {
 	C.cvShowImage(win.name_c, unsafe.Pointer(image))
 }
 
+func (win *Window) AddText(image *IplImage, txt string, x, y int) {
+	text := C.CString(txt)
+	defer C.free(unsafe.Pointer(text))
+
+	//C.cvSet(img, C.cvScalar(0, 0, 0, 0), nil)
+	var font C.CvFont
+	C.cvInitFont(&font, C.CV_FONT_HERSHEY_SIMPLEX|C.CV_FONT_ITALIC,
+		1.0, 0.3, 0, 2, 1)
+	C.cvPutText(unsafe.Pointer(image), text, C.cvPoint(C.int(x), C.int(y)), &font,
+		C.cvScalar(0, 0, 0, 0))
+}
+
 /* resize/move window */
 func (win *Window) Resize(width, height int) {
 	C.cvResizeWindow(win.name_c, C.int(width), C.int(height))
