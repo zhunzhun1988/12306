@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-var debug bool = true
+var debug bool = false
 
 type LogLevel string
 
@@ -36,6 +36,9 @@ func MyLoginLogE(format string, a ...interface{}) {
 
 func MyLogDebug(format string, a ...interface{}) {
 	MyLog(DEBUG, OTHER, format, a...)
+}
+func MyLogInfo(format string, a ...interface{}) {
+	MyLog(INFO, OTHER, format, a...)
 }
 
 func MyLog(l LogLevel, t LogType, format string, a ...interface{}) {

@@ -15,3 +15,10 @@ type LoginMessage struct {
 	Result_code    int    `json:"result_code"`
 	Uamtk          string `json:"uamtk"`
 }
+
+type TokenMessage struct {
+	Result_message string `json:"result_message"`
+	Result_code    int    `json:"result_code"`
+	AppTK          string `json:"apptk"`
+	NewAppTK       string `json:"newapptk"`
+}

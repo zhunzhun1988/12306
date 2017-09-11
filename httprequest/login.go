@@ -6,6 +6,7 @@ import (
 	"12306/verifycode"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -13,11 +14,16 @@ import (
 )
 
 const (
-	login_verify_codeimage_addr = "https://kyfw.12306.cn/passport/captcha/captcha-image?login_site=E&module=login&rand=sjrand&"
-	login_verify_addr           = "https://kyfw.12306.cn/passport/captcha/captcha-check"
-	weblogin_addr               = "https://kyfw.12306.cn/passport/web/login"
-	userlogin_addr1             = "https://kyfw.12306.cn/otn/login/userLogin"
-	userlogin_addr2             = "https://kyfw.12306.cn/otn/passport?redirect=/otn/login/userLogin"
+	host_addr                   = "kyfw.12306.cn"
+	login_init_addr             = string("https://") + string(host_addr) + string("/otn/login/init")
+	login_init12306_addr        = string("https://") + string(host_addr) + string("/otn/index/initMy12306")
+	login_verify_codeimage_addr = string("https://") + string(host_addr) + string("/passport/captcha/captcha-image?login_site=E&module=login&rand=sjrand&")
+	login_verify_addr           = string("https://") + string(host_addr) + string("/passport/captcha/captcha-check")
+	weblogin_addr               = string("https://") + string(host_addr) + string("/passport/web/login")
+	userlogin_addr1             = string("https://") + string(host_addr) + string("/otn/login/userLogin")
+	userlogin_addr2             = string("https://") + string(host_addr) + string("/otn/passport?redirect=/otn/login/userLogin")
+	get_token_addr              = string("https://") + string(host_addr) + string("/passport/web/auth/uamtk")
+	set_token_addr              = string("https://") + string(host_addr) + string("/otn/uamauthclient")
 )
 
 func getLoginVerifyImgUrl() string {
@@ -52,6 +58,36 @@ func GetLoginVerifyImg(client *http.Client, imageSavePath string) error {
 	return utils.WriteFile(imageSavePath, resp.Body)
 }
 
+func LoginInit(client *http.Client) error {
+	resp, err := client.Get(login_init_addr)
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("LoginInit bad status code:%d", resp.StatusCode)
+	}
+
+	/*	resp, err = client.Get("https://kyfw.12306.cn/otn/dynamicJs/lpkfrls")
+		if err != nil {
+			return err
+		}
+		if resp.StatusCode != http.StatusOK {
+			return fmt.Errorf("LoginInit bad status code:%d", resp.StatusCode)
+		}*/
+	return nil
+}
+
+func LoginInit12306(client *http.Client) error {
+	resp, err := client.Get(login_init12306_addr)
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("LoginInit12306 bad status code:%d", resp.StatusCode)
+	}
+	return nil
+}
+
 func CheckVerifiyLoginCode(client *http.Client, poss verifycode.VerifyPosList) error {
 	resp, err := client.PostForm(login_verify_addr, getLoginVerifyUrlValues(poss))
 	if err != nil {
@@ -60,20 +96,14 @@ func CheckVerifiyLoginCode(client *http.Client, poss verifycode.VerifyPosList) e
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("VerifiyLoginCode bad status code:%d", resp.StatusCode)
 	}
-	buf, errRead := ioutil.ReadAll(resp.Body)
-	if errRead != nil {
-		return fmt.Errorf("VerifiyLoginCode read error:%d", errRead)
-	}
 
-	if string(buf) != "" {
-		var vm VerifyMessage = VerifyMessage{}
-		errJson := json.Unmarshal(buf, &vm)
-		if errJson != nil {
-			return fmt.Errorf("VerifiyLoginCode Unmarshal error:%d", errJson)
-		}
-		if vm.Result_code != Verify_OK_CODE {
-			return fmt.Errorf("VerifiyLoginCode:%v", vm)
-		}
+	var vm VerifyMessage = VerifyMessage{}
+	errJson := json.Unmarshal(getBody(resp.Body), &vm)
+	if errJson != nil {
+		return fmt.Errorf("VerifiyLoginCode Unmarshal error:%d", errJson)
+	}
+	if vm.Result_code != Verify_OK_CODE {
+		return fmt.Errorf("VerifiyLoginCode:%v", vm)
 	}
 	return nil
 }
@@ -86,25 +116,57 @@ func WebLogin(client *http.Client, username, password string) error {
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("WebLogin bad status code:%d", resp.StatusCode)
 	}
-	buf, errRead := ioutil.ReadAll(resp.Body)
-	if errRead != nil {
-		return fmt.Errorf("WebLogin read error:%d", errRead)
+	var lm LoginMessage = LoginMessage{}
+	errJson := json.Unmarshal(getBody(resp.Body), &lm)
+	if errJson != nil {
+		return fmt.Errorf("WebLogin Unmarshal error:%v", errJson)
 	}
-
-	if string(buf) != "" {
-		var lm LoginMessage = LoginMessage{}
-		errJson := json.Unmarshal(buf, &lm)
-		if errJson != nil {
-			return fmt.Errorf("WebLogin Unmarshal error:%s", string(buf))
-		}
-		log.MyLogDebug("loginMsg:%v", lm)
-		if lm.Result_code != Login_OK_Code {
-			return fmt.Errorf("WebLogin:%v", lm)
-		}
+	log.MyLogDebug("loginMsg:%v", lm)
+	if lm.Result_code != Login_OK_Code {
+		return fmt.Errorf("WebLogin:%v", lm)
 	}
 	return nil
 }
 
+func AuthUamtk(client *http.Client) error {
+	resp, err := client.PostForm(get_token_addr, url.Values{"appid": []string{"otn"}})
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("AuthUamtk bad status code:%d", resp.StatusCode)
+	}
+	buf := getBody(resp.Body)
+	log.MyLogDebug("uamtk body:%s", buf)
+
+	var tm TokenMessage = TokenMessage{}
+	errJson := json.Unmarshal([]byte(buf), &tm)
+	if errJson != nil {
+		return fmt.Errorf("AuthUamtk Unmarshal error:%s", string(buf))
+	}
+	if tm.NewAppTK == "" {
+		return fmt.Errorf("AuthUamtk get token error:%s", string(buf))
+	}
+	log.MyLogDebug("get new token:%s", tm.NewAppTK)
+	resp, err = client.PostForm(set_token_addr, url.Values{"tk": []string{tm.NewAppTK}})
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("uamauthclient bad status code:%d", resp.StatusCode)
+	}
+	log.MyLogDebug("uamauthclient body:%s", getBody(resp.Body))
+	return nil
+}
+
+func getBody(r io.ReadCloser) []byte {
+	buf, errRead := ioutil.ReadAll(r)
+	if errRead != nil {
+		return []byte{}
+	}
+	return buf
+
+}
 func UserLogin(client *http.Client) error {
 	log.MyLogDebug("user login step1")
 	resp, err := client.PostForm(userlogin_addr1, url.Values{"_json_att": []string{}})
@@ -124,38 +186,5 @@ func UserLogin(client *http.Client) error {
 		return fmt.Errorf("UserLogin2 bad status code:%d", resp.StatusCode)
 	}
 
-	log.MyLogDebug("user login step3")
-	resp, err = client.PostForm("https://kyfw.12306.cn/passport/web/auth/uamtk", url.Values{"appid": []string{"otn"}})
-	if err != nil {
-		return err
-	}
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("UserLogin3 bad status code:%d", resp.StatusCode)
-	}
-
-	log.MyLogDebug("user login step4")
-	resp, err = client.PostForm("https://kyfw.12306.cn/otn/uamauthclient", url.Values{"tk": []string{"zvaAMSVnBTpijXCC6IGNrrUjap17wXW_85MuzMTW6qfOjRQsfs6260"}})
-	if err != nil {
-		return err
-	}
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("UserLogin4 bad status code:%d", resp.StatusCode)
-	}
-	/*buf, errRead := ioutil.ReadAll(resp.Body)
-	if errRead != nil {
-		return fmt.Errorf("UserLogin read error:%d", errRead)
-	}
-
-	if string(buf) != "" {
-		var lm LoginMessage = LoginMessage{}
-		errJson := json.Unmarshal(buf, &lm)
-		if errJson != nil {
-			return fmt.Errorf("UserLogin Unmarshal error:%s", string(buf))
-		}
-		log.MyLogDebug("UserLogin:%v", lm)
-		if lm.Result_code != Login_OK_Code {
-			return fmt.Errorf("StartLogin:%v", lm)
-		}
-	}*/
 	return nil
 }

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"net/http/cookiejar"
 	"time"
 )
 
@@ -32,9 +33,10 @@ func NewClient() *Client {
 			return conn, nil
 		},
 	}
+	jar, _ := cookiejar.New(nil)
 	return &Client{
 		client: &http.Client{
-			Jar:       newJar(),
+			Jar:       jar, //newJar(),
 			Transport: tr,
 		},
 		isLogined: false,
@@ -44,31 +46,51 @@ func NewClient() *Client {
 
 func (c *Client) Login(username, password string) error {
 	log.MyLoginLogI("开始登录...")
+	errInit := LoginInit(c.client)
+	if errInit != nil {
+		log.MyLoginLogE("登录失败：%v\n", errInit)
+		return errInit
+	}
+
+	log.MyLogDebug("开始拉取登录验证码")
 	errVerify := GetLoginVerifyImg(c.client, "loginverifycode.jpg")
 	if errVerify != nil {
-		log.MyLoginLogE("登录失败：%s\n", errVerify)
+		log.MyLoginLogE("登录失败：%v\n", errVerify)
 		return errVerify
 	}
-
+	log.MyLogDebug("开始验证验证码")
 	errCheck := CheckVerifiyLoginCode(c.client, c.verifies.GetAnswer("loginverifycode.jpg"))
 	if errCheck != nil {
-		log.MyLoginLogE("登录失败：%s", errCheck)
+		log.MyLoginLogE("登录失败：%v", errCheck)
 		return errCheck
 	}
-
+	log.MyLogDebug("开始用户登录")
 	errWebLogin := WebLogin(c.client, username, password)
 	if errWebLogin != nil {
-		log.MyLoginLogE("登录失败：%s", errCheck)
+		log.MyLoginLogE("登录失败：%v", errCheck)
 		return errWebLogin
 	}
-
+	log.MyLogDebug("开始正式用户登录")
 	errUserLogin := UserLogin(c.client)
 	if errUserLogin != nil {
-		log.MyLoginLogE("登录失败：%s", errUserLogin)
+		log.MyLoginLogE("登录失败：%v", errUserLogin)
 		return errUserLogin
-	} else {
-		log.MyLoginLogI("登录成功")
 	}
+
+	log.MyLogDebug("开始获取token")
+	authErr := AuthUamtk(c.client)
+	if authErr != nil {
+		log.MyLoginLogE("登录失败：%v", authErr)
+		return authErr
+	}
+
+	log.MyLogDebug("模拟12306跳转")
+	errInit12306 := LoginInit12306(c.client)
+	if errInit12306 != nil {
+		log.MyLoginLogE("登录失败：%v\n", errInit12306)
+		return errInit12306
+	}
+	log.MyLoginLogI("登录成功")
 	c.isLogined = true
 	return nil
 }

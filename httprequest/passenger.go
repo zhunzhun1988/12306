@@ -43,6 +43,7 @@ func getPassengerStr(buf string) string {
 	}
 	return ""
 }
+
 func GetPassengers(client *http.Client) ([]Passenger, error) {
 	ret := []Passenger{}
 	resp, err := client.PostForm(get_passenger_addr, getPassengerUrlValues())
@@ -58,11 +59,10 @@ func GetPassengers(client *http.Client) ([]Passenger, error) {
 	}
 
 	if len(buf) != 0 {
-		log.MyLogDebug("passengerInfo buf:%s", string(buf))
-		passengerInfo := getPassengerStr(string(buf))
+		passengerInfo := strings.Replace(getPassengerStr(string(buf)), "'", "\"", -1)
 		log.MyLogDebug("passengerInfo:%s", passengerInfo)
 		if passengerInfo != "" {
-			errJson := json.Unmarshal([]byte(passengerInfo), ret)
+			errJson := json.Unmarshal([]byte(passengerInfo), &ret)
 			if errJson != nil {
 				return ret, errJson
 			}
