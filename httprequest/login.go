@@ -151,3 +151,26 @@ func UserLogin(client *http.Client) error {
 
 	return nil
 }
+
+func UserLoginCheck(client *http.Client) bool {
+	resp, err := client.Get(userlogin_check)
+	if err != nil {
+		return false
+	}
+	if resp.StatusCode != http.StatusOK {
+		return false
+	}
+	buf := getBody(resp.Body)
+	if len(buf) == 0 {
+		return false
+	}
+	msg := LoginCheckMsg{}
+	err = json.Unmarshal([]byte(buf), &msg)
+	if err != nil {
+		return false
+	}
+	if msg.Data.Flag != true {
+		return false
+	}
+	return true
+}

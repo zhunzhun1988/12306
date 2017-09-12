@@ -49,3 +49,15 @@ type LeftTicketsMsg struct {
 	Messages               string             `json:"messages"`
 	ValidateMessages       string             `json:"validateMessages"`
 }
+
+type LoginCheckMsgData struct {
+	Flag bool `json:"flag"`
+}
+type LoginCheckMsg struct {
+	ValidateMessagesShowId string            `json:"validateMessagesShowId"`
+	Status                 bool              `json:"status"`
+	Httpstatus             int               `json:"httpstatus"`
+	Data                   LoginCheckMsgData `json:"Data"`
+	//Messages               []string          `json:"messages"`
+	//ValidateMessages string `json:"validateMessages"`
+}

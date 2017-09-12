@@ -54,7 +54,23 @@ func GetStations(client *http.Client) ([]StationItem, error) {
 }
 
 func LeftTicket(client *http.Client, date, fromStation, toStation, code string) (LeftTicketsMsgData, error) {
-	resp, err := client.Get(getLeftTicketUrl(date, fromStation, toStation, code))
+	resp, err := client.Get(leftticket_init_addr)
+	if err != nil {
+		return LeftTicketsMsgData{}, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return LeftTicketsMsgData{}, fmt.Errorf("LeftTicket init bad status code:%d", resp.StatusCode)
+	}
+
+	resp, err = client.Get(getLeftTicketLogUrl(date, fromStation, toStation, code))
+	if err != nil {
+		return LeftTicketsMsgData{}, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return LeftTicketsMsgData{}, fmt.Errorf("LeftTicket log bad status code:%d", resp.StatusCode)
+	}
+
+	resp, err = client.Get(getLeftTicketUrl(date, fromStation, toStation, code))
 	if err != nil {
 		return LeftTicketsMsgData{}, err
 	}
@@ -68,6 +84,6 @@ func LeftTicket(client *http.Client, date, fromStation, toStation, code string) 
 	}
 	ltm := LeftTicketsMsg{}
 	errJson := json.Unmarshal(body, &ltm)
-	fmt.Printf("body:%s\n", string(body))
-	return ltm.Data, fmt.Errorf("json parse err:%v", errJson)
+	//fmt.Printf("body:%s\n", string(body))
+	return ltm.Data, fmt.Errorf("json parse err:%v, [%s]", errJson, string(body))
 }

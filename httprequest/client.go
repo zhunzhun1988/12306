@@ -19,20 +19,21 @@ const (
 )
 
 type Interface interface {
-	Login(username, password string) error
+	Login() error
 	IsLogined() bool
 	GetPassengers() ([]Passenger, error)
 	GetStations() ([]StationItem, error)
 	GetLeftTickets(date, fromStation, toStation string) (LeftTicketsMsgData, error)
 }
 type Client struct {
-	client       *http.Client
-	isLogined    bool
-	verifies     verifycode.VerifierList
-	stationCache []StationItem
+	client             *http.Client
+	isLogined          bool
+	verifies           verifycode.VerifierList
+	stationCache       []StationItem
+	username, password string
 }
 
-func NewClient() Interface {
+func NewClient(username, password string) Interface {
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 		Dial: func(netw, addr string) (net.Conn, error) {
@@ -52,6 +53,8 @@ func NewClient() Interface {
 		},
 		isLogined:    false,
 		stationCache: nil,
+		username:     username,
+		password:     password,
 		verifies:     verifycode.VerifierList{verifycode.NewDebugVerify()},
 	}
 }
@@ -68,7 +71,7 @@ func getNextFileName() string {
 		return path.Join(dir, fmt.Sprintf("image_%04d.jpg", len(files)+1))
 	}
 }
-func (c *Client) Login(username, password string) error {
+func (c *Client) Login() error {
 	log.MyLoginLogI("开始登录...")
 	errInit := LoginInit(c.client)
 	if errInit != nil {
@@ -90,7 +93,7 @@ func (c *Client) Login(username, password string) error {
 		return errCheck
 	}
 	log.MyLogDebug("开始用户登录")
-	errWebLogin := WebLogin(c.client, username, password)
+	errWebLogin := WebLogin(c.client, c.username, c.password)
 	if errWebLogin != nil {
 		log.MyLoginLogE("登录失败：%v", errCheck)
 		return errWebLogin
@@ -124,7 +127,7 @@ func (c *Client) IsLogined() bool {
 	if c.isLogined == false {
 		return false
 	}
-	return true
+	return UserLoginCheck(c.client)
 }
 func (c *Client) GetPassengers() ([]Passenger, error) {
 	if c.isLogined == false {

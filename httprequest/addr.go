@@ -17,16 +17,25 @@ const (
 	weblogin_addr               = string("https://") + string(host_addr) + string("/passport/web/login")
 	userlogin_addr1             = string("https://") + string(host_addr) + string("/otn/login/userLogin")
 	userlogin_addr2             = string("https://") + string(host_addr) + string("/otn/passport?redirect=/otn/login/userLogin")
-	get_token_addr              = string("https://") + string(host_addr) + string("/passport/web/auth/uamtk")
-	set_token_addr              = string("https://") + string(host_addr) + string("/otn/uamauthclient")
+	userlogin_check             = string("https://") + string(host_addr) + string("/otn/login/checkUser")
 
-	get_station_addr    = string("https://") + string(host_addr) + string("/otn/resources/js/framework/station_name.js?station_version=1.9025")
-	set_leftticket_addr = string("https://") + string(host_addr) + string("/otn/leftTicket/queryX")
+	get_token_addr = string("https://") + string(host_addr) + string("/passport/web/auth/uamtk")
+	set_token_addr = string("https://") + string(host_addr) + string("/otn/uamauthclient")
+
+	get_station_addr     = string("https://") + string(host_addr) + string("/otn/resources/js/framework/station_name.js?station_version=1.9025")
+	leftticket_init_addr = string("https://") + string(host_addr) + string("/otn/leftTicket/init")
+	get_leftticket_addr  = string("https://") + string(host_addr) + string("/otn/leftTicket/queryX")
+	leftticket_log_addr  = string("https://") + string(host_addr) + string("/otn/leftTicket/log")
 )
 
 func getLeftTicketUrl(date, fromStation, toStation, code string) string {
 	return fmt.Sprintf("%s?leftTicketDTO.train_date=%s&leftTicketDTO.from_station=%s&leftTicketDTO.to_station=%s&purpose_codes=%s",
-		set_leftticket_addr, date, fromStation, toStation, code)
+		get_leftticket_addr, date, fromStation, toStation, code)
+}
+
+func getLeftTicketLogUrl(date, fromStation, toStation, code string) string {
+	return fmt.Sprintf("%s?leftTicketDTO.train_date=%s&leftTicketDTO.from_station=%s&leftTicketDTO.to_station=%s&purpose_codes=%s",
+		leftticket_log_addr, date, fromStation, toStation, code)
 }
 
 func getLoginVerifyImgUrl() string {
