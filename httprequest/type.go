@@ -22,3 +22,30 @@ type TokenMessage struct {
 	AppTK          string `json:"apptk"`
 	NewAppTK       string `json:"newapptk"`
 }
+
+type StationItem struct {
+	PYJianXie string
+	Name      string
+	ID        string
+	PingYin   string
+	Code      string
+	Index     string
+}
+
+type TicketsInfo struct {
+}
+
+type LeftTicketsMsgData struct {
+	Result []string          `json:"result"`
+	Flag   string            `json:"flag"`
+	Map    map[string]string `json:"map"`
+}
+
+type LeftTicketsMsg struct {
+	ValidateMessagesShowId string             `json:"validateMessagesShowId"`
+	Status                 string             `json:"status"`
+	Httpstatus             int                `json:"httpstatus"`
+	Data                   LeftTicketsMsgData `json:"Data"`
+	Messages               string             `json:"messages"`
+	ValidateMessages       string             `json:"validateMessages"`
+}

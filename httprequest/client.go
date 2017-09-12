@@ -2,15 +2,15 @@ package httprequest
 
 import (
 	"12306/log"
+	"12306/utils"
 	"12306/verifycode"
 	"crypto/tls"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"net/http/cookiejar"
 	"os"
-	"strings"
+	"path"
 	"time"
 )
 
@@ -18,13 +18,21 @@ const (
 	request_timeout = 30 * time.Second
 )
 
+type Interface interface {
+	Login(username, password string) error
+	IsLogined() bool
+	GetPassengers() ([]Passenger, error)
+	GetStations() ([]StationItem, error)
+	GetLeftTickets(date, fromStation, toStation string) (LeftTicketsMsgData, error)
+}
 type Client struct {
-	client    *http.Client
-	isLogined bool
-	verifies  verifycode.VerifierList
+	client       *http.Client
+	isLogined    bool
+	verifies     verifycode.VerifierList
+	stationCache []StationItem
 }
 
-func NewClient() *Client {
+func NewClient() Interface {
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 		Dial: func(netw, addr string) (net.Conn, error) {
@@ -42,36 +50,22 @@ func NewClient() *Client {
 			Jar:       jar, //newJar(),
 			Transport: tr,
 		},
-		isLogined: false,
-		verifies:  verifycode.VerifierList{verifycode.NewDebugVerify()},
+		isLogined:    false,
+		stationCache: nil,
+		verifies:     verifycode.VerifierList{verifycode.NewDebugVerify()},
 	}
-}
-
-func ListDir(dirPth string, suffix string) (files []string, err error) {
-	files = make([]string, 0, 10)
-	dir, err := ioutil.ReadDir(dirPth)
-	if err != nil {
-		return nil, err
-	}
-	PthSep := string(os.PathSeparator)
-	suffix = strings.ToUpper(suffix) //忽略后缀匹配的大小写
-	for _, fi := range dir {
-		if fi.IsDir() { // 忽略目录
-			continue
-		}
-		if strings.HasPrefix(strings.ToUpper(fi.Name()), suffix) { //匹配文件
-			files = append(files, dirPth+PthSep+fi.Name())
-		}
-	}
-	return files, nil
 }
 
 func getNextFileName() string {
-	files, err := ListDir("/home/adam/go/src/12306/image", "image_")
+	dir := path.Join(utils.GetCurrentPath(), "image")
+	files, err := utils.ListDir(dir, "image_")
 	if err != nil {
-		return "image/image_0001.jpg"
+		if utils.CheckFileIsExist(dir) == false {
+			os.Mkdir(dir, 0777)
+		}
+		return path.Join(dir, "image_0001.jpg")
 	} else {
-		return fmt.Sprintf("image/image_%04d.jpg", len(files)+1)
+		return path.Join(dir, fmt.Sprintf("image_%04d.jpg", len(files)+1))
 	}
 }
 func (c *Client) Login(username, password string) error {
@@ -144,4 +138,38 @@ func (c *Client) GetPassengers() ([]Passenger, error) {
 	}
 	log.MyLog(log.DEBUG, log.PASSENGER, "用户信息[%v]", ps)
 	return ps, err
+}
+
+func (c *Client) GetStations() ([]StationItem, error) {
+	if c.stationCache != nil && len(c.stationCache) > 0 {
+		return c.stationCache, nil
+	}
+	log.MyLogInfo("获取车站信息...")
+	ret, err := GetStations(c.client)
+	if err == nil {
+		c.stationCache = ret
+	}
+	log.MyLogInfo("车站信息数:%d", len(ret))
+	return ret, err
+}
+
+func changeStationNameToCode(stations []StationItem, name string) string {
+	for _, s := range stations {
+		if s.Name == name {
+			return s.ID
+		}
+	}
+	return ""
+}
+
+func (c *Client) GetLeftTickets(date, fromStation, toStation string) (LeftTicketsMsgData, error) {
+	_, err := c.GetStations()
+	if err != nil {
+		return LeftTicketsMsgData{}, fmt.Errorf("GetLeftTickets query station info err:%v", err)
+	}
+	from, to := changeStationNameToCode(c.stationCache, fromStation), changeStationNameToCode(c.stationCache, toStation)
+	if date == "" || from == "" || to == "" {
+		return LeftTicketsMsgData{}, fmt.Errorf("GetLeftTickets parms err")
+	}
+	return LeftTicket(c.client, date, from, to, "ADULT")
 }
