@@ -2,6 +2,7 @@ package verifycode
 
 import (
 	"12306/opencv"
+	"fmt"
 )
 
 type DebugVerify struct {
@@ -28,6 +29,66 @@ func checkIndexToPos(image string, i, j int) (x, y int) {
 		y = 109
 	}
 	return
+}
+
+func GetSubImage(imagepath string, r, c int) [][]opencv.Scalar {
+	image := opencv.LoadImage(imagepath)
+	if image == nil {
+		fmt.Printf("test1\n")
+		return nil
+	}
+	defer image.Release()
+	mat := image.GetMat()
+
+	sw, sh, ew, eh := GetImageRange(mat.Cols(), mat.Rows(), r, c)
+	fmt.Printf("%d %d %d %d\n", sw, sh, ew, eh)
+	ret := make([][]opencv.Scalar, eh-sh)
+	for i := sh; i < eh; i++ {
+		ret[i-sh] = make([]opencv.Scalar, ew-sw)
+		for j := sw; j < ew; j++ {
+			ret[i-sh][j-sw] = mat.Get2D(i, j)
+		}
+	}
+	return ret
+}
+
+func CmpSubImage(a, b [][]opencv.Scalar) int {
+	sum := 0
+	same := 0
+
+	isInRange := func(i, j int) bool {
+		if i-5 <= j && i+5 >= j {
+			return true
+		}
+		return false
+	}
+
+	for i, row := range a {
+		for j, cel := range row {
+			sum++
+			ar, ab, ag := int(cel.Val()[0]), int(cel.Val()[1]), int(cel.Val()[2])
+		loop1:
+			for stepi := -3; stepi <= 3; stepi++ {
+				for stepj := -3; stepj <= 3; stepj++ {
+					ii := i + stepi
+					jj := j + stepj
+					if ii < 0 || jj < 0 || ii >= len(a) || jj >= len(row) {
+						continue
+					}
+					br, bb, bg := int(b[ii][jj].Val()[0]), int(b[ii][jj].Val()[1]), int(b[ii][jj].Val()[2])
+					if isInRange(ar, br) && isInRange(ab, bb) && isInRange(ag, bg) {
+						same++
+						break loop1
+					}
+				}
+			}
+
+		}
+	}
+	if sum > 0 {
+		return int(same*100) / sum
+	}
+	return 0
 }
 
 func (dv *DebugVerify) GetAnswer(imagepath string) VerifyPosList {
@@ -76,6 +137,7 @@ func (dv *DebugVerify) GetAnswer(imagepath string) VerifyPosList {
 	})
 	win.AddText(image, "OK", mat.Cols()-30, 20)
 	win.ShowImage(image)
+	win.Move(0, 0)
 	for {
 		opencv.WaitKey(100)
 		if selectOk == true {

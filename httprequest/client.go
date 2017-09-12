@@ -5,9 +5,12 @@ import (
 	"12306/verifycode"
 	"crypto/tls"
 	"fmt"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"net/http/cookiejar"
+	"os"
+	"strings"
 	"time"
 )
 
@@ -44,6 +47,33 @@ func NewClient() *Client {
 	}
 }
 
+func ListDir(dirPth string, suffix string) (files []string, err error) {
+	files = make([]string, 0, 10)
+	dir, err := ioutil.ReadDir(dirPth)
+	if err != nil {
+		return nil, err
+	}
+	PthSep := string(os.PathSeparator)
+	suffix = strings.ToUpper(suffix) //忽略后缀匹配的大小写
+	for _, fi := range dir {
+		if fi.IsDir() { // 忽略目录
+			continue
+		}
+		if strings.HasPrefix(strings.ToUpper(fi.Name()), suffix) { //匹配文件
+			files = append(files, dirPth+PthSep+fi.Name())
+		}
+	}
+	return files, nil
+}
+
+func getNextFileName() string {
+	files, err := ListDir("/home/adam/go/src/12306/image", "image_")
+	if err != nil {
+		return "image/image_0001.jpg"
+	} else {
+		return fmt.Sprintf("image/image_%04d.jpg", len(files)+1)
+	}
+}
 func (c *Client) Login(username, password string) error {
 	log.MyLoginLogI("开始登录...")
 	errInit := LoginInit(c.client)
@@ -53,13 +83,14 @@ func (c *Client) Login(username, password string) error {
 	}
 
 	log.MyLogDebug("开始拉取登录验证码")
-	errVerify := GetLoginVerifyImg(c.client, "loginverifycode.jpg")
+	saveFile := getNextFileName()
+	errVerify := GetLoginVerifyImg(c.client, saveFile)
 	if errVerify != nil {
 		log.MyLoginLogE("登录失败：%v\n", errVerify)
 		return errVerify
 	}
 	log.MyLogDebug("开始验证验证码")
-	errCheck := CheckVerifiyLoginCode(c.client, c.verifies.GetAnswer("loginverifycode.jpg"))
+	errCheck := CheckVerifiyLoginCode(c.client, c.verifies.GetAnswer(saveFile))
 	if errCheck != nil {
 		log.MyLoginLogE("登录失败：%v", errCheck)
 		return errCheck
@@ -95,6 +126,12 @@ func (c *Client) Login(username, password string) error {
 	return nil
 }
 
+func (c *Client) IsLogined() bool {
+	if c.isLogined == false {
+		return false
+	}
+	return true
+}
 func (c *Client) GetPassengers() ([]Passenger, error) {
 	if c.isLogined == false {
 		log.MyLog(log.ERROR, log.PASSENGER, "获取用户信息失败:未登录")

@@ -168,7 +168,6 @@ func getBody(r io.ReadCloser) []byte {
 
 }
 func UserLogin(client *http.Client) error {
-	log.MyLogDebug("user login step1")
 	resp, err := client.PostForm(userlogin_addr1, url.Values{"_json_att": []string{}})
 	if err != nil {
 		return err
@@ -177,7 +176,6 @@ func UserLogin(client *http.Client) error {
 		return fmt.Errorf("UserLogin1 bad status code:%d", resp.StatusCode)
 	}
 
-	log.MyLogDebug("user login step2")
 	resp, err = client.Get(userlogin_addr2)
 	if err != nil {
 		return err
