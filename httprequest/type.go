@@ -61,3 +61,8 @@ type LoginCheckMsg struct {
 	//Messages               []string          `json:"messages"`
 	//ValidateMessages string `json:"validateMessages"`
 }
+
+type LeftTicketLoginDeviceMsg struct {
+	Exp string `json:"exp"`
+	Dfp string `json:"dfp"`
+}

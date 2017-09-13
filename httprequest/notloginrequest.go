@@ -53,27 +53,49 @@ func GetStations(client *http.Client) ([]StationItem, error) {
 	return parseStation(tmp), nil
 }
 
+var exp string = ""
+var dfp string = ""
+
+func getExpAndDfp(client *http.Client) (expret, dfpret string) {
+	if exp != "" && dfp != "" {
+		return exp, dfp
+	}
+	resp, err := client.Get(getLeftTicketLoginDeviceUrl())
+	if err != nil {
+		return "", ""
+	}
+	body := string(getBody(resp.Body))
+	if body == "" || strings.HasPrefix(body, "callbackFunction") == false {
+		return "", ""
+	}
+	startIndex := strings.Index(body, "'")
+	endIndex := strings.LastIndex(body, "'")
+	if startIndex <= 0 || endIndex <= startIndex {
+		return "", ""
+	}
+	jsonStr := body[startIndex+1 : endIndex]
+	lldm := LeftTicketLoginDeviceMsg{}
+	errJson := json.Unmarshal([]byte(jsonStr), &lldm)
+	if errJson != nil {
+		return "", ""
+	}
+	exp = lldm.Exp
+	dfp = lldm.Dfp
+	return exp, dfp
+}
+
 func LeftTicket(client *http.Client, date, fromStation, toStation, code string) (LeftTicketsMsgData, error) {
-	resp, err := client.Get(leftticket_init_addr)
+	curExp, curDfp := getExpAndDfp(client)
+	req, _ := http.NewRequest("Get", getLeftTicketUrl(date, fromStation, toStation, code), nil)
+	req.Header.Set("Referer", "https://kyfw.12306.cn/otn/leftTicket/init")
+	req.AddCookie(&http.Cookie{Name: "RAIL_EXPIRATION", Value: curExp})
+	req.AddCookie(&http.Cookie{Name: "RAIL_DEVICEID", Value: curDfp})
+
+	resp, err := client.Do(req)
 	if err != nil {
 		return LeftTicketsMsgData{}, err
-	}
-	if resp.StatusCode != http.StatusOK {
-		return LeftTicketsMsgData{}, fmt.Errorf("LeftTicket init bad status code:%d", resp.StatusCode)
 	}
 
-	resp, err = client.Get(getLeftTicketLogUrl(date, fromStation, toStation, code))
-	if err != nil {
-		return LeftTicketsMsgData{}, err
-	}
-	if resp.StatusCode != http.StatusOK {
-		return LeftTicketsMsgData{}, fmt.Errorf("LeftTicket log bad status code:%d", resp.StatusCode)
-	}
-
-	resp, err = client.Get(getLeftTicketUrl(date, fromStation, toStation, code))
-	if err != nil {
-		return LeftTicketsMsgData{}, err
-	}
 	if resp.StatusCode != http.StatusOK {
 		return LeftTicketsMsgData{}, fmt.Errorf("LeftTicket bad status code:%d", resp.StatusCode)
 	}
@@ -84,6 +106,5 @@ func LeftTicket(client *http.Client, date, fromStation, toStation, code string) 
 	}
 	ltm := LeftTicketsMsg{}
 	errJson := json.Unmarshal(body, &ltm)
-	//fmt.Printf("body:%s\n", string(body))
 	return ltm.Data, fmt.Errorf("json parse err:%v, [%s]", errJson, string(body))
 }

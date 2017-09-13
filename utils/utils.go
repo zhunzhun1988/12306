@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"fmt"
 	"io"
 	"io/ioutil"
 	"math/rand"
@@ -18,6 +19,11 @@ func getNumRand() *rand.Rand {
 		numRand = rand.New(rand.NewSource(time.Now().UnixNano()))
 	}
 	return numRand
+}
+
+func GetNowMicoSecondStr() string {
+	n := time.Now()
+	return fmt.Sprintf("%d", n.Unix()*int64(1000)+int64(n.Nanosecond()/1000000))
 }
 
 func GetRandFloat(len int) string {
