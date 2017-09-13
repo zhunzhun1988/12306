@@ -97,7 +97,7 @@ func stringToTicketsInfo(str string, stationMap map[string]string) TicketsInfo {
 	if len(strs) != 36 {
 		return ret
 	}
-	ret.SecretStr = strs[0]
+	ret.SecretStr = strings.Replace(strings.Replace(strings.Replace(strings.Replace(strs[0], "%2F", "/", -1), "%2B", "+", -1), "%3D", "=", -1), "%0A", " ", -1)
 	ret.Message = strs[1]
 	ret.TrianName = strs[3]
 
@@ -160,4 +160,11 @@ type LoginCheckMsg struct {
 type LeftTicketLoginDeviceMsg struct {
 	Exp string `json:"exp"`
 	Dfp string `json:"dfp"`
+}
+
+type OrderTicketMsg struct {
+	ValidateMessagesShowId string   `json:"validateMessagesShowId"`
+	Status                 bool     `json:"status"`
+	Httpstatus             int      `json:"httpstatus"`
+	Messages               []string `json:"messages"`
 }

@@ -26,7 +26,8 @@ type Interface interface {
 	GetStations() ([]StationItem, error)
 	GetLeftTickets(date, fromStation, toStation string) (TicketsInfoList, error)
 	OrderTicket(ticket TicketsInfo) (bool, error)
-	CheckAndOrderTicket(date, from, to string, trians []string, tickerTyper TicketType, interval time.Duration) func()
+	CheckAndOrderTicket(date, from, to string, trians []string,
+		tickerTyper []TicketType, interval time.Duration) (func(), func(timeOut time.Duration) (bool, string))
 }
 type Client struct {
 	client             *http.Client
@@ -115,12 +116,12 @@ func (c *Client) Login() error {
 		return authErr
 	}
 
-	log.MyLogDebug("模拟12306跳转")
+	/*log.MyLogDebug("模拟12306跳转")
 	errInit12306 := LoginInit12306(c.client)
 	if errInit12306 != nil {
 		log.MyLoginLogE("登录失败：%v\n", errInit12306)
 		return errInit12306
-	}
+	}*/
 	log.MyLoginLogI("登录成功")
 	c.isLogined = true
 	return nil
@@ -181,6 +182,7 @@ func (c *Client) GetLeftTickets(date, fromStation, toStation string) (TicketsInf
 }
 
 func (c *Client) OrderTicket(ticket TicketsInfo) (bool, error) {
+	log.MyOrderLogI("开始锁定%s车次的票", ticket.TrianName)
 	if ticket.SecretStr == "" {
 		return false, fmt.Errorf("当前车次不可预定")
 	}
@@ -190,19 +192,38 @@ func (c *Client) OrderTicket(ticket TicketsInfo) (bool, error) {
 			return false, fmt.Errorf("登录失败")
 		}
 	}
+
+	err := OrderTicket(c.client, ticket.SecretStr, ticket.StartTime.Format("2006-01-02"), ticket.FromStation, ticket.ToStation)
+	if err != nil {
+		log.MyOrderLogE("%s", err.Error())
+		return false, err
+	}
 	return true, nil
 }
 
-func (c *Client) CheckAndOrderTicket(date, from, to string, trians []string, tickerTyper TicketType, checkInterval time.Duration) func() {
+func (c *Client) CheckAndOrderTicket(date, from, to string, trians []string,
+	tickerTypers []TicketType, checkInterval time.Duration) (func(), func(timeOut time.Duration) (bool, string)) {
 	stop := make(chan struct{}, 0)
+	exitCh := make(chan bool, 0)
+	msg := ""
 	cancel := func() {
 		stop <- struct{}{}
+	}
+	waitOrderResult := func(timeOut time.Duration) (bool, string) {
+		select {
+		case ok := <-exitCh:
+			return ok, msg
+		case <-time.After(timeOut):
+			return false, "time out"
+		}
 	}
 	trainMap := make(map[string]bool)
 	for _, train := range trians {
 		trainMap[train] = true
 	}
 	go func() {
+		success := false
+	exitFor:
 		for {
 			exit := false
 			select {
@@ -216,6 +237,15 @@ func (c *Client) CheckAndOrderTicket(date, from, to string, trians []string, tic
 				if err == nil {
 					for _, t := range ticks {
 						if _, ok := trainMap[t.TrianName]; ok {
+							if isTicketMatchType(&t, tickerTypers) {
+								ok, _ := c.OrderTicket(t)
+								if ok == true {
+									exit = true
+									success = true
+									msg = "订票成功"
+									break exitFor
+								}
+							}
 							filter = append(filter, t)
 						}
 					}
@@ -234,6 +264,8 @@ func (c *Client) CheckAndOrderTicket(date, from, to string, trians []string, tic
 				break
 			}
 		}
+		exitCh <- success
 	}()
-	return cancel
+
+	return cancel, waitOrderResult
 }

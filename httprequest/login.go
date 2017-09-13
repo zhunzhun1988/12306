@@ -63,9 +63,10 @@ func CheckVerifiyLoginCode(client *http.Client, poss verifycode.VerifyPosList) e
 	}
 
 	var vm VerifyMessage = VerifyMessage{}
-	errJson := json.Unmarshal(getBody(resp.Body), &vm)
+	body := getBody(resp.Body)
+	errJson := json.Unmarshal(body, &vm)
 	if errJson != nil {
-		return fmt.Errorf("VerifiyLoginCode Unmarshal error:%d", errJson)
+		return fmt.Errorf("VerifiyLoginCode Unmarshal error:%v,[%s]", errJson, string(body))
 	}
 	if vm.Result_code != Verify_OK_CODE {
 		return fmt.Errorf("VerifiyLoginCode:%v", vm)
