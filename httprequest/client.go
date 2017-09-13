@@ -23,7 +23,7 @@ type Interface interface {
 	IsLogined() bool
 	GetPassengers() ([]Passenger, error)
 	GetStations() ([]StationItem, error)
-	GetLeftTickets(date, fromStation, toStation string) (LeftTicketsMsgData, error)
+	GetLeftTickets(date, fromStation, toStation string) (TicketsInfoList, error)
 }
 type Client struct {
 	client             *http.Client
@@ -165,14 +165,14 @@ func changeStationNameToCode(stations []StationItem, name string) string {
 	return ""
 }
 
-func (c *Client) GetLeftTickets(date, fromStation, toStation string) (LeftTicketsMsgData, error) {
+func (c *Client) GetLeftTickets(date, fromStation, toStation string) (TicketsInfoList, error) {
 	_, err := c.GetStations()
 	if err != nil {
-		return LeftTicketsMsgData{}, fmt.Errorf("GetLeftTickets query station info err:%v", err)
+		return TicketsInfoList{}, fmt.Errorf("GetLeftTickets query station info err:%v", err)
 	}
 	from, to := changeStationNameToCode(c.stationCache, fromStation), changeStationNameToCode(c.stationCache, toStation)
 	if date == "" || from == "" || to == "" {
-		return LeftTicketsMsgData{}, fmt.Errorf("GetLeftTickets parms err")
+		return TicketsInfoList{}, fmt.Errorf("GetLeftTickets parms err")
 	}
 	return LeftTicket(c.client, date, from, to, "ADULT")
 }

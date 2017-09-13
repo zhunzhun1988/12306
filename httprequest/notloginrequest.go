@@ -84,7 +84,7 @@ func getExpAndDfp(client *http.Client) (expret, dfpret string) {
 	return exp, dfp
 }
 
-func LeftTicket(client *http.Client, date, fromStation, toStation, code string) (LeftTicketsMsgData, error) {
+func LeftTicket(client *http.Client, date, fromStation, toStation, code string) (TicketsInfoList, error) {
 	curExp, curDfp := getExpAndDfp(client)
 	req, _ := http.NewRequest("Get", getLeftTicketUrl(date, fromStation, toStation, code), nil)
 	req.Header.Set("Referer", "https://kyfw.12306.cn/otn/leftTicket/init")
@@ -93,18 +93,18 @@ func LeftTicket(client *http.Client, date, fromStation, toStation, code string) 
 
 	resp, err := client.Do(req)
 	if err != nil {
-		return LeftTicketsMsgData{}, err
+		return TicketsInfoList{}, err
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return LeftTicketsMsgData{}, fmt.Errorf("LeftTicket bad status code:%d", resp.StatusCode)
+		return TicketsInfoList{}, fmt.Errorf("LeftTicket bad status code:%d", resp.StatusCode)
 	}
 
 	body := getBody(resp.Body)
 	if len(body) == 0 {
-		return LeftTicketsMsgData{}, fmt.Errorf("LeftTicket data is empty")
+		return TicketsInfoList{}, fmt.Errorf("LeftTicket data is empty")
 	}
 	ltm := LeftTicketsMsg{}
 	errJson := json.Unmarshal(body, &ltm)
-	return ltm.Data, fmt.Errorf("json parse err:%v, [%s]", errJson, string(body))
+	return LeftTicketsMsgDataToTicketsInfoList(&ltm.Data), fmt.Errorf("json parse err:%v, [%s]", errJson, string(body))
 }
