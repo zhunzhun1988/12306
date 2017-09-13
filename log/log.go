@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-var debug bool = false
+var debug bool = true
 
 type LogLevel string
 
@@ -22,6 +22,8 @@ const (
 	LOGIN     = "登录"
 	PASSENGER = "获取用户信息"
 	OTHER     = "其它"
+	ORDER     = "订票"
+	CHECK     = "查票"
 )
 
 func MyLoginLogI(format string, a ...interface{}) {
@@ -39,6 +41,34 @@ func MyLogDebug(format string, a ...interface{}) {
 }
 func MyLogInfo(format string, a ...interface{}) {
 	MyLog(INFO, OTHER, format, a...)
+}
+
+// order log
+func MyOrderLogI(format string, a ...interface{}) {
+	MyLog(INFO, ORDER, format, a...)
+}
+func MyOrderLogW(format string, a ...interface{}) {
+	MyLog(WARNING, ORDER, format, a...)
+}
+func MyOrderLogE(format string, a ...interface{}) {
+	MyLog(ERROR, ORDER, format, a...)
+}
+func MyOrderLogD(format string, a ...interface{}) {
+	MyLog(DEBUG, ORDER, format, a...)
+}
+
+// check log
+func MyCheckLogI(format string, a ...interface{}) {
+	MyLog(INFO, CHECK, format, a...)
+}
+func MyCheckLogW(format string, a ...interface{}) {
+	MyLog(WARNING, CHECK, format, a...)
+}
+func MyCheckLogE(format string, a ...interface{}) {
+	MyLog(ERROR, CHECK, format, a...)
+}
+func MyCheckLogD(format string, a ...interface{}) {
+	MyLog(DEBUG, CHECK, format, a...)
 }
 
 func MyLog(l LogLevel, t LogType, format string, a ...interface{}) {

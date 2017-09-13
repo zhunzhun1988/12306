@@ -11,6 +11,7 @@ import (
 	"net/http/cookiejar"
 	"os"
 	"path"
+	"strings"
 	"time"
 )
 
@@ -24,6 +25,8 @@ type Interface interface {
 	GetPassengers() ([]Passenger, error)
 	GetStations() ([]StationItem, error)
 	GetLeftTickets(date, fromStation, toStation string) (TicketsInfoList, error)
+	OrderTicket(ticket TicketsInfo) (bool, error)
+	CheckAndOrderTicket(date, from, to string, trians []string, tickerTyper TicketType, interval time.Duration) func()
 }
 type Client struct {
 	client             *http.Client
@@ -175,4 +178,62 @@ func (c *Client) GetLeftTickets(date, fromStation, toStation string) (TicketsInf
 		return TicketsInfoList{}, fmt.Errorf("GetLeftTickets parms err")
 	}
 	return LeftTicket(c.client, date, from, to, "ADULT")
+}
+
+func (c *Client) OrderTicket(ticket TicketsInfo) (bool, error) {
+	if ticket.SecretStr == "" {
+		return false, fmt.Errorf("当前车次不可预定")
+	}
+	if c.IsLogined() == false {
+		err := c.Login()
+		if err != nil {
+			return false, fmt.Errorf("登录失败")
+		}
+	}
+	return true, nil
+}
+
+func (c *Client) CheckAndOrderTicket(date, from, to string, trians []string, tickerTyper TicketType, checkInterval time.Duration) func() {
+	stop := make(chan struct{}, 0)
+	cancel := func() {
+		stop <- struct{}{}
+	}
+	trainMap := make(map[string]bool)
+	for _, train := range trians {
+		trainMap[train] = true
+	}
+	go func() {
+		for {
+			exit := false
+			select {
+			case <-stop:
+				fmt.Printf("cancel called\n")
+				exit = true
+				break
+			case <-time.After(checkInterval):
+				ticks, err := c.GetLeftTickets(date, from, to)
+				filter := make([]TicketsInfo, 0, len(trainMap))
+				if err == nil {
+					for _, t := range ticks {
+						if _, ok := trainMap[t.TrianName]; ok {
+							filter = append(filter, t)
+						}
+					}
+					strs := TicketsInfoList(filter).ToStrings()
+
+					log.MyCheckLogI("%s", strings.Repeat("+", len(strs[0])))
+					for _, str := range strs {
+						log.MyCheckLogI("%s", str)
+					}
+
+					log.MyCheckLogI("%s\n", strings.Repeat("-", len(strs[0])*2))
+
+				}
+			}
+			if exit == true {
+				break
+			}
+		}
+	}()
+	return cancel
 }

@@ -2,8 +2,13 @@ package main
 
 import (
 	"12306/httprequest"
-	"12306/log"
+	//"encoding/json"
+	"time"
+	//"time"
+	//"12306/log"
+	//"12306/utils"
 	"flag"
+	"fmt"
 )
 
 var (
@@ -13,12 +18,12 @@ var (
 
 func main() {
 	flag.Parse()
+	client := httprequest.NewClient(*usename, *password)
 
-	client := httprequest.NewClient()
-	err := client.Login(*usename, *password)
-	if err != nil {
-		return
-	}
-	ps, _ := client.GetPassengers()
-	log.MyLogInfo("passenger:%v\n", ps)
+	cancel := client.CheckAndOrderTicket("2017-10-12", "上海", "嘉兴", []string{"K1805", "G7301"}, httprequest.Ticket_YW, time.Second)
+	time.Sleep(20 * time.Second)
+	cancel()
+	time.Sleep(10 * time.Second)
+	fmt.Printf("exit")
+
 }

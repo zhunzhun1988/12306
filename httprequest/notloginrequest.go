@@ -106,5 +106,8 @@ func LeftTicket(client *http.Client, date, fromStation, toStation, code string) 
 	}
 	ltm := LeftTicketsMsg{}
 	errJson := json.Unmarshal(body, &ltm)
-	return LeftTicketsMsgDataToTicketsInfoList(&ltm.Data), fmt.Errorf("json parse err:%v, [%s]", errJson, string(body))
+	if errJson != nil {
+		return TicketsInfoList{}, fmt.Errorf("json parse err:%v, [%s]", errJson, string(body))
+	}
+	return LeftTicketsMsgDataToTicketsInfoList(&ltm.Data), nil
 }

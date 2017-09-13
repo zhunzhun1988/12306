@@ -60,6 +60,18 @@ type TicketsInfo struct {
 	QT          string
 }
 
+func (t TicketsInfo) ToString() string {
+	strF := func(str string) string {
+		if str != "" {
+			return str
+		}
+		return "--"
+	}
+	return fmt.Sprintf("车次：[%s]\t出发：[%s]\t到达:[%s]\t\t日期：[%s]\t特等坐:[%s]\t一等座:[%s]\t二等座:[%s]\t高级软卧:[%s]\t软卧:[%s]\t动卧:[%s]\t硬卧:[%s]\t软座:[%s]\t硬座:[%s]\t无座:[%s]",
+		t.TrianName, t.FromStation, t.ToStation, t.StartTime.Format("2006-01-02"), strF(t.TDZ), strF(t.YDZ), strF(t.EDZ), strF(t.GJRW), strF(t.RW),
+		strF(t.DW), strF(t.YW), strF(t.RZ), strF(t.YZ), strF(t.WZ))
+}
+
 type TicketsInfoList []TicketsInfo
 
 func (tl TicketsInfoList) ToStrings() []string {
@@ -88,7 +100,8 @@ func stringToTicketsInfo(str string, stationMap map[string]string) TicketsInfo {
 	ret.SecretStr = strs[0]
 	ret.Message = strs[1]
 	ret.TrianName = strs[3]
-	ret.FromStation = stationMap[strs[4]]
+
+	ret.FromStation = stationMap[strs[6]]
 	ret.ToStation = stationMap[strs[7]]
 	ret.StartTime, _ = time.Parse("2006-01-02 15:04:05", fmt.Sprintf("%s-%s-%s %s:00", string(strs[13][0:4]), string(strs[13][4:6]), string(strs[13][6:]), strs[8]))
 	ret.EndTime, _ = time.Parse("2006-01-02 15:04:05", fmt.Sprintf("%s-%s-%s %s:00", string(strs[13][0:4]), string(strs[13][4:6]), string(strs[13][6:]), strs[9]))
@@ -128,8 +141,8 @@ type LeftTicketsMsg struct {
 	Status                 bool               `json:"status"`
 	Httpstatus             int                `json:"httpstatus"`
 	Data                   LeftTicketsMsgData `json:"Data"`
-	Messages               string             `json:"messages"`
-	ValidateMessages       string             `json:"validateMessages"`
+	//Messages               string             `json:"messages"`
+	//ValidateMessages       string             `json:"validateMessages"`
 }
 
 type LoginCheckMsgData struct {
