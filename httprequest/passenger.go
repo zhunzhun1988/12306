@@ -23,7 +23,7 @@ type Passenger struct {
 	PassengerIDTypeName string `json:"passenger_id_type_name"`
 	PassengerType       string `json:"passenger_type"`
 	PassengerIDNo       string `json:"passenger_id_no"`
-	MobileNo            string `json:mobile_no`
+	MobileNo            string `json:"mobile_no"`
 }
 
 func getPassengerUrlValues() url.Values {

@@ -39,25 +39,29 @@ type StationItem struct {
 }
 
 type TicketsInfo struct {
-	SecretStr   string
-	FromStation string
-	ToStation   string
-	Message     string
-	StartTime   time.Time
-	EndTime     time.Time
-	TrianName   string
-	HaveTickets bool
-	TDZ         string
-	YDZ         string
-	EDZ         string
-	GJRW        string
-	RW          string
-	DW          string
-	YW          string
-	RZ          string
-	YZ          string
-	WZ          string
-	QT          string
+	SecretStr       string
+	FromStation     string
+	FromStationCode string
+	ToStation       string
+	ToStationCode   string
+	Message         string
+	StartTime       time.Time
+	EndTime         time.Time
+	TrianName       string
+	TrainNumber     string
+	LeftTicket      string
+	HaveTickets     bool
+	TDZ             string
+	YDZ             string
+	EDZ             string
+	GJRW            string
+	RW              string
+	DW              string
+	YW              string
+	RZ              string
+	YZ              string
+	WZ              string
+	QT              string
 }
 
 func (t TicketsInfo) ToString() string {
@@ -97,18 +101,21 @@ func stringToTicketsInfo(str string, stationMap map[string]string) TicketsInfo {
 	if len(strs) != 36 {
 		return ret
 	}
-	ret.SecretStr = strings.Replace(strings.Replace(strings.Replace(strings.Replace(strs[0], "%2F", "/", -1), "%2B", "+", -1), "%3D", "=", -1), "%0A", " ", -1)
+	ret.SecretStr = strs[0] //strings.Replace(strings.Replace(strings.Replace(strings.Replace(strs[0], "%2F", "/", -1), "%2B", "+", -1), "%3D", "=", -1), "%0A", " ", -1)
 	ret.Message = strs[1]
+	ret.TrainNumber = strs[2]
 	ret.TrianName = strs[3]
-
+	ret.FromStationCode = strs[6]
 	ret.FromStation = stationMap[strs[6]]
+	ret.ToStationCode = strs[7]
 	ret.ToStation = stationMap[strs[7]]
 	ret.StartTime, _ = time.Parse("2006-01-02 15:04:05", fmt.Sprintf("%s-%s-%s %s:00", string(strs[13][0:4]), string(strs[13][4:6]), string(strs[13][6:]), strs[8]))
 	ret.EndTime, _ = time.Parse("2006-01-02 15:04:05", fmt.Sprintf("%s-%s-%s %s:00", string(strs[13][0:4]), string(strs[13][4:6]), string(strs[13][6:]), strs[9]))
 	if strs[11] == "Y" {
 		ret.HaveTickets = true
 	}
-	ret.DW = strs[33]  // ok
+	ret.LeftTicket = strs[12]
+	ret.DW = strs[33]  // okfalse
 	ret.TDZ = strs[32] // ok
 	ret.YDZ = strs[31] // ok
 	ret.EDZ = strs[30] // ok
@@ -167,4 +174,36 @@ type OrderTicketMsg struct {
 	Status                 bool     `json:"status"`
 	Httpstatus             int      `json:"httpstatus"`
 	Messages               []string `json:"messages"`
+}
+
+type CheckOrderMsgData struct {
+	IfShowPassCode     string `json:"ifShowPassCode"`
+	CanChooseBeds      string `json:"canChooseBeds"`
+	CanChooseSeats     string `json:"canChooseSeats"`
+	Choose_Seats       string `json:"choose_Seats"`
+	IsCanChooseMid     string `json:"isCanChooseMid"`
+	IfShowPassCodeTime string `json:"ifShowPassCodeTime"`
+	SubmitStatus       bool   `json:"submitStatus"`
+	SmokeStr           string `json:"smokeStr"`
+}
+type CheckOrderMsg struct {
+	ValidateMessagesShowId string            `json:"validateMessagesShowId"`
+	Status                 bool              `json:"status"`
+	Httpstatus             int               `json:"httpstatus"`
+	Data                   CheckOrderMsgData `json:"Data"`
+	Messages               []string          `json:"messages"`
+}
+type OrderQueueCountMsgData struct {
+	Count  string `json:"count"`
+	Ticket string `json:"ticket"`
+	Op_2   string `json:"op_2"`
+	CountT string `json:"countT"`
+	Op_1   string `json:"op_1"`
+}
+type OrderQueueCountMsg struct {
+	ValidateMessagesShowId string                 `json:"validateMessagesShowId"`
+	Status                 bool                   `json:"status"`
+	Httpstatus             int                    `json:"httpstatus"`
+	Data                   OrderQueueCountMsgData `json:"Data"`
+	Messages               []string               `json:"messages"`
 }

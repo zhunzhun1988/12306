@@ -1,6 +1,7 @@
 package httprequest
 
 import (
+	"12306/log"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -101,6 +102,7 @@ func LeftTicket(client *http.Client, date, fromStation, toStation, code string) 
 	}
 
 	body := getBody(resp.Body)
+	log.MyLogDebug("LeftTicket body:[%s]", string(body))
 	if len(body) == 0 {
 		return TicketsInfoList{}, fmt.Errorf("LeftTicket data is empty")
 	}

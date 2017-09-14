@@ -25,15 +25,16 @@ type Interface interface {
 	GetPassengers() ([]Passenger, error)
 	GetStations() ([]StationItem, error)
 	GetLeftTickets(date, fromStation, toStation string) (TicketsInfoList, error)
-	OrderTicket(ticket TicketsInfo) (bool, error)
-	CheckAndOrderTicket(date, from, to string, trians []string,
-		tickerTyper []TicketType, interval time.Duration) (func(), func(timeOut time.Duration) (bool, string))
+	OrderTicket(ticket TicketsInfo, ps []Passenger, tt TicketType) (bool, error)
+	CheckAndOrderTicket(date, from, to string, passengerNames, trians []string,
+		tickerTyper []TicketType, interval time.Duration) (func(), func(timeOut time.Duration) (bool, string), error)
 }
 type Client struct {
 	client             *http.Client
 	isLogined          bool
 	verifies           verifycode.VerifierList
 	stationCache       []StationItem
+	passengersCache    []Passenger
 	username, password string
 }
 
@@ -55,11 +56,12 @@ func NewClient(username, password string) Interface {
 			Jar:       jar, //newJar(),
 			Transport: tr,
 		},
-		isLogined:    false,
-		stationCache: nil,
-		username:     username,
-		password:     password,
-		verifies:     verifycode.VerifierList{verifycode.NewDebugVerify()},
+		isLogined:       false,
+		stationCache:    nil,
+		passengersCache: nil,
+		username:        username,
+		password:        password,
+		verifies:        verifycode.VerifierList{verifycode.NewDebugVerify()},
 	}
 }
 
@@ -134,9 +136,14 @@ func (c *Client) IsLogined() bool {
 	return UserLoginCheck(c.client)
 }
 func (c *Client) GetPassengers() ([]Passenger, error) {
-	if c.isLogined == false {
-		log.MyLog(log.ERROR, log.PASSENGER, "获取用户信息失败:未登录")
-		return []Passenger{}, fmt.Errorf("请先登录")
+	if c.passengersCache != nil && len(c.passengersCache) > 0 {
+		return c.passengersCache, nil
+	}
+	if c.IsLogined() == false {
+		err := c.Login()
+		if err != nil {
+			return []Passenger{}, fmt.Errorf("登录失败")
+		}
 	}
 	log.MyLog(log.INFO, log.PASSENGER, "获取用户信息...")
 	ps, err := GetPassengers(c.client)
@@ -144,6 +151,7 @@ func (c *Client) GetPassengers() ([]Passenger, error) {
 		log.MyLog(log.ERROR, log.PASSENGER, "获取用户信息失败:%s", err)
 	}
 	log.MyLog(log.DEBUG, log.PASSENGER, "用户信息[%v]", ps)
+	c.passengersCache = ps
 	return ps, err
 }
 
@@ -181,7 +189,7 @@ func (c *Client) GetLeftTickets(date, fromStation, toStation string) (TicketsInf
 	return LeftTicket(c.client, date, from, to, "ADULT")
 }
 
-func (c *Client) OrderTicket(ticket TicketsInfo) (bool, error) {
+func (c *Client) OrderTicket(ticket TicketsInfo, ps []Passenger, tt TicketType) (bool, error) {
 	log.MyOrderLogI("开始锁定%s车次的票", ticket.TrianName)
 	if ticket.SecretStr == "" {
 		return false, fmt.Errorf("当前车次不可预定")
@@ -198,11 +206,59 @@ func (c *Client) OrderTicket(ticket TicketsInfo) (bool, error) {
 		log.MyOrderLogE("%s", err.Error())
 		return false, err
 	}
+	checkToken, submitToken, errToken := GetSubmitToken(c.client)
+	log.MyOrderLogD("checkToken:%s, submitToken:%s", checkToken, submitToken)
+	if submitToken == "" || errToken != nil {
+		log.MyOrderLogE("获取token失败：%s", errToken.Error())
+		return false, errToken
+	}
+	ok, _, st, errCheck := CheckOrderInfo(c.client, ps, tt, submitToken)
+	if errCheck != nil || ok == false {
+		log.MyOrderLogE("查询订单信息失败：%s", errCheck.Error())
+		return false, errCheck
+	}
+	queueOk, num, errQueue := GetOrderQueueCount(c.client, ticket.StartTime, ticket.TrainNumber, ticket.TrianName, string(st), ticket.FromStationCode, ticket.ToStationCode,
+		ticket.LeftTicket, submitToken)
+	if errQueue != nil || queueOk == false {
+		log.MyOrderLogE("订单排队失败：%s", errQueue.Error())
+		return false, errQueue
+	}
+	if num < len(ps) {
+		log.MyOrderLogE("票余数不足：只剩%d张票", num)
+		return false, fmt.Errorf("票余数不足：只剩%d张票", num)
+	}
+
+	confirmOk, errConfirm := ConfirmOrder(c.client, checkToken, ticket.LeftTicket, submitToken, ps, st)
+	if errConfirm != nil || confirmOk == false {
+		log.MyOrderLogE("订票提交失败:%v", errConfirm)
+		return false, fmt.Errorf("订票提交失败%v", errConfirm)
+	}
 	return true, nil
 }
 
-func (c *Client) CheckAndOrderTicket(date, from, to string, trians []string,
-	tickerTypers []TicketType, checkInterval time.Duration) (func(), func(timeOut time.Duration) (bool, string)) {
+func (c *Client) CheckAndOrderTicket(date, from, to string, passengerNames, trians []string,
+	tickerTypers []TicketType, checkInterval time.Duration) (func(), func(timeOut time.Duration) (bool, string), error) {
+	ps, err := c.GetPassengers()
+	if err != nil {
+		return nil, nil, fmt.Errorf("获取用户失败")
+	}
+	if len(ps) == 0 {
+		return nil, nil, fmt.Errorf("账户没有绑定任何账号")
+	}
+	filterPassenger := make([]Passenger, 0, len(passengerNames))
+	for _, pn := range passengerNames {
+		find := false
+		for _, p := range ps {
+			if p.PassengerName == pn {
+				find = true
+				filterPassenger = append(filterPassenger, p)
+				break
+			}
+		}
+		if find == false {
+			return nil, nil, fmt.Errorf("乘客%s没有绑定到该账户", pn)
+		}
+	}
 	stop := make(chan struct{}, 0)
 	exitCh := make(chan bool, 0)
 	msg := ""
@@ -237,8 +293,8 @@ func (c *Client) CheckAndOrderTicket(date, from, to string, trians []string,
 				if err == nil {
 					for _, t := range ticks {
 						if _, ok := trainMap[t.TrianName]; ok {
-							if isTicketMatchType(&t, tickerTypers) {
-								ok, _ := c.OrderTicket(t)
+							if match, tt := isTicketMatchType(&t, tickerTypers); match == true {
+								ok, _ := c.OrderTicket(t, filterPassenger, tt)
 								if ok == true {
 									exit = true
 									success = true
@@ -267,5 +323,5 @@ func (c *Client) CheckAndOrderTicket(date, from, to string, trians []string,
 		exitCh <- success
 	}()
 
-	return cancel, waitOrderResult
+	return cancel, waitOrderResult, nil
 }
