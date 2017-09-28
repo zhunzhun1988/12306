@@ -92,8 +92,10 @@ func (c *Client) Login() error {
 		log.MyLoginLogE("登录失败：%v\n", errVerify)
 		return errVerify
 	}
+	log.MyLogDebug("开始处理验证码")
+	poss := c.verifies.GetAnswer(saveFile)
 	log.MyLogDebug("开始验证验证码")
-	errCheck := CheckVerifiyLoginCode(c.client, c.verifies.GetAnswer(saveFile))
+	errCheck := CheckVerifiyLoginCode(c.client, poss)
 	if errCheck != nil {
 		log.MyLoginLogE("登录失败：%v", errCheck)
 		return errCheck
@@ -227,7 +229,6 @@ func (c *Client) OrderTicket(ticket TicketsInfo, ps []Passenger, tt TicketType) 
 		log.MyOrderLogE("票余数不足：只剩%d张票", num)
 		return false, fmt.Errorf("票余数不足：只剩%d张票", num)
 	}
-
 	confirmOk, errConfirm := ConfirmOrder(c.client, checkToken, ticket.LeftTicket, submitToken, ps, st)
 	if errConfirm != nil || confirmOk == false {
 		log.MyOrderLogE("订票提交失败:%v", errConfirm)

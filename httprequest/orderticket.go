@@ -265,17 +265,23 @@ func ConfirmOrder(client *http.Client, keycheck, leftticket, token string, ps []
 	body := getBody(resp.Body)
 	log.MyOrderLogD("ConfirmOrder:body[%s]", string(body))*/
 
-	resp, errPost := client.Post(confirm_order_addr, "application/x-www-form-urlencoded; charset=UTF-8",
-		strings.NewReader(getConfirmOrderUrlValuesStr(keycheck, leftticket, token, ps, st, ADULT)))
-	fmt.Printf("patrick debug:[%s]\n", getConfirmOrderUrlValuesStr(keycheck, leftticket, token, ps, st, ADULT))
+	req, err := http.NewRequest("POST", confirm_order_addr, strings.NewReader(getConfirmOrderUrlValuesStr(keycheck, leftticket, token, ps, st, ADULT)))
+	if err != nil {
+		return false, err
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8")
+	req.Header.Set("Referer", "https://kyfw.12306.cn/otn/confirmPassenger/initDc")
+	resp, errPost := client.Do(req)
+	//resp, errPost := client.Post(confirm_order_addr, "application/x-www-form-urlencoded; charset=UTF-8",
+	//	strings.NewReader(getConfirmOrderUrlValuesStr(keycheck, leftticket, token, ps, st, ADULT)))
 	if errPost != nil {
 		return false, errPost
 	}
 	if resp.StatusCode != http.StatusOK {
 		return false, fmt.Errorf("ConfirmOrder bad status code:%d", resp.StatusCode)
 	}
-	body := getBody(resp.Body)
-	log.MyOrderLogD("ConfirmOrder:body[%s]", string(body))
+	//body := getBody(resp.Body)
+	//log.MyOrderLogD("ConfirmOrder:body[%s]", string(body))
 	return true, nil
 
 	/*dataUrl := getConfirmOrderUrlValues(keycheck, leftticket, token, ps, st, ADULT)
