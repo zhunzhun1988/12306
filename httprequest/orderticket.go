@@ -16,7 +16,8 @@ import (
 type TicketType int
 
 const (
-	Ticket_TDZ = iota
+	Ticket_UNKNOW = -1
+	Ticket_TDZ    = iota
 	Ticket_YDZ
 	Ticket_EDZ
 	Ticket_GJRW
@@ -50,6 +51,32 @@ const (
 	SeatType_SWZ    = "9"
 	SeatType_GJRW   = "6"
 )
+
+func StringToSeatType(str string) TicketType {
+	switch str {
+	case "特等座":
+		return Ticket_TDZ
+	case "一等座":
+		return Ticket_YDZ
+	case "二等座":
+		return Ticket_EDZ
+	case "高级软卧":
+		return Ticket_GJRW
+	case "软卧":
+		return Ticket_RW
+	case "动卧":
+		return Ticket_DW
+	case "硬卧":
+		return Ticket_YW
+	case "软座":
+		return Ticket_RZ
+	case "硬座":
+		return Ticket_YZ
+	case "无座":
+		return Ticket_WZ
+	}
+	return Ticket_UNKNOW
+}
 
 func ticketTypeTSeatType(tt TicketType) SeatType {
 	switch tt {

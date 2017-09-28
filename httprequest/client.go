@@ -313,7 +313,7 @@ func (c *Client) CheckAndOrderTicket(date, from, to string, passengerNames, tria
 						log.MyCheckLogI("%s", str)
 					}
 
-					log.MyCheckLogI("%s\n", strings.Repeat("-", len(strs[0])*2))
+					log.MyCheckLogI("%s\n", strings.Repeat("-", len(strs[0])))
 
 				}
 			}

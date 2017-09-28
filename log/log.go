@@ -26,6 +26,9 @@ const (
 	CHECK     = "查票"
 )
 
+func SetDebug(d bool) {
+	debug = d
+}
 func MyLoginLogI(format string, a ...interface{}) {
 	MyLog(INFO, LOGIN, format, a...)
 }
@@ -69,6 +72,20 @@ func MyCheckLogE(format string, a ...interface{}) {
 }
 func MyCheckLogD(format string, a ...interface{}) {
 	MyLog(DEBUG, CHECK, format, a...)
+}
+
+// other log
+func MyLogI(format string, a ...interface{}) {
+	MyLog(INFO, OTHER, format, a...)
+}
+func MyLogW(format string, a ...interface{}) {
+	MyLog(WARNING, OTHER, format, a...)
+}
+func MyLogE(format string, a ...interface{}) {
+	MyLog(ERROR, OTHER, format, a...)
+}
+func MyLogD(format string, a ...interface{}) {
+	MyLog(DEBUG, OTHER, format, a...)
 }
 
 func MyLog(l LogLevel, t LogType, format string, a ...interface{}) {
