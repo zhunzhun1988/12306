@@ -50,6 +50,7 @@ func GetPassengers(client *http.Client) ([]Passenger, error) {
 	if err != nil {
 		return ret, err
 	}
+	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		return ret, fmt.Errorf("GetPassengers bad status code:%d", resp.StatusCode)
 	}

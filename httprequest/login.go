@@ -17,6 +17,7 @@ func GetLoginVerifyImg(client *http.Client, imageSavePath string) error {
 	if err != nil {
 		return err
 	}
+	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("GetLoginVerifyImg bad status code:%d", resp.StatusCode)
 	}
@@ -28,6 +29,7 @@ func LoginInit(client *http.Client) error {
 	if err != nil {
 		return err
 	}
+	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("LoginInit bad status code:%d", resp.StatusCode)
 	}
@@ -47,6 +49,7 @@ func LoginInit12306(client *http.Client) error {
 	if err != nil {
 		return err
 	}
+	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("LoginInit12306 bad status code:%d", resp.StatusCode)
 	}
@@ -58,6 +61,7 @@ func CheckVerifiyLoginCode(client *http.Client, poss verifycode.VerifyPosList) e
 	if err != nil {
 		return err
 	}
+	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("VerifiyLoginCode bad status code:%d", resp.StatusCode)
 	}
@@ -79,6 +83,7 @@ func WebLogin(client *http.Client, username, password string) error {
 	if err != nil {
 		return err
 	}
+	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("WebLogin bad status code:%d", resp.StatusCode)
 	}
@@ -99,6 +104,7 @@ func AuthUamtk(client *http.Client) error {
 	if err != nil {
 		return err
 	}
+	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("AuthUamtk bad status code:%d", resp.StatusCode)
 	}
@@ -138,6 +144,7 @@ func UserLogin(client *http.Client) error {
 	if err != nil {
 		return err
 	}
+	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("UserLogin1 bad status code:%d", resp.StatusCode)
 	}
@@ -158,6 +165,7 @@ func UserLoginCheck(client *http.Client) bool {
 	if err != nil {
 		return false
 	}
+	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		return false
 	}

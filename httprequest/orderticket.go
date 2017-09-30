@@ -153,6 +153,7 @@ func OrderTicket(client *http.Client, secret, date, from, to string) error {
 	if err != nil {
 		return err
 	}
+	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("OrderTicket bad status code:%d", resp.StatusCode)
 	}
@@ -202,6 +203,7 @@ func GetSubmitToken(client *http.Client) (string, string, error) {
 	if err != nil {
 		return "", "", err
 	}
+	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		return "", "", fmt.Errorf("GetSubmitToken bad status code:%d", resp.StatusCode)
 	}
@@ -222,6 +224,7 @@ func CheckOrderInfo(client *http.Client, passengers []Passenger, tt TicketType, 
 	if err != nil {
 		return false, false, st, err
 	}
+	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		return false, false, st, fmt.Errorf("CheckOrderInfo bad status code:%d", resp.StatusCode)
 	}
@@ -245,6 +248,7 @@ func GetOrderQueueCount(client *http.Client, dateTime time.Time, trainno, trainC
 	if err != nil {
 		return false, 0, err
 	}
+	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		return false, 0, fmt.Errorf("CheckOrderInfo bad status code:%d", resp.StatusCode)
 	}
@@ -304,6 +308,7 @@ func ConfirmOrder(client *http.Client, keycheck, leftticket, token string, ps []
 	if errPost != nil {
 		return false, errPost
 	}
+	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		return false, fmt.Errorf("ConfirmOrder bad status code:%d", resp.StatusCode)
 	}

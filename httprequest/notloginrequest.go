@@ -36,6 +36,7 @@ func GetStations(client *http.Client) ([]StationItem, error) {
 	if err != nil {
 		return ret, err
 	}
+	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		return ret, fmt.Errorf("GetStations bad status code:%d", resp.StatusCode)
 	}
@@ -65,6 +66,7 @@ func getExpAndDfp(client *http.Client) (expret, dfpret string) {
 	if err != nil {
 		return "", ""
 	}
+	defer resp.Body.Close()
 	body := string(getBody(resp.Body))
 	if body == "" || strings.HasPrefix(body, "callbackFunction") == false {
 		return "", ""
@@ -96,7 +98,7 @@ func LeftTicket(client *http.Client, date, fromStation, toStation, code string) 
 	if err != nil {
 		return TicketsInfoList{}, err
 	}
-
+	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		return TicketsInfoList{}, fmt.Errorf("LeftTicket bad status code:%d", resp.StatusCode)
 	}
